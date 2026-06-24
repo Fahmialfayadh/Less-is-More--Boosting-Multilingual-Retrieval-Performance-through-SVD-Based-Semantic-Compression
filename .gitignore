@@ -52,3 +52,40 @@ notes/
 
 *dummy*
 *stop_words*
+# LaTeX Temp & Build files
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.xdv
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Fonts
+*.ttf
+*.otf
+*.ttc
+*.dfont
+
+# ACL & TeX sources
+acl_latex.tex
+acl.sty
+acl_natbib.bst
+body.tex
+paper_en.tex
+test_fonts*.tex
+test_fonts*.pdf
+
+# Scripts & Binaries
+convert_*.py
+generate_tex.py
+tectonic
+pandoc*
+
+# Docs & Temp Outputs
+*.docx
+.~lock.*
+bubub.md
