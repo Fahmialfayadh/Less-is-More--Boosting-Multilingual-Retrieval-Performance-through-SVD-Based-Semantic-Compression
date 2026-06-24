@@ -1,0 +1,36 @@
+{
+  "documents": [
+    {"id": "doc1", "text": "Pengiriman barang gratis ongkir menggunakan ekspedisi JNE reguler untuk pulau jawa"},
+    {"id": "doc2", "text": "Produk baju rajut ini terbuat dari bahan katun premium yang lembut dan adem dipakai"},
+    {"id": "doc3", "text": "Maaf toko kami sedang tutup hari libur, pesanan pesanan akan diproses besok hari kerja"},
+    {"id": "doc4", "text": "Promo diskon 50% untuk pembelian kedua khusus hari pelanggan nasional"},
+    {"id": "doc5", "text": "Barang ready stock warna merah ukuran L siap kirim, langsung diorder saja kak"},
+    {"id": "doc6", "text": "Baju rajut ini berwarna merah dan tersedia diskon gratis ongkir"},
+    {"id": "doc7", "text": "Kami menggunakan bahan rajut sintetis untuk produk celana panjang"},
+    {"id": "doc8", "text": "Silakan cek promo gratis ongkir di halaman depan toko kami"},
+    {"id": "doc9", "text": "Toko kami buka setiap hari senin sampai minggu siap melayani Anda"},
+    {"id": "doc10", "text": "Pesanan Anda sudah dikirim menggunakan kurir JNE kemarin"}
+  ],
+  "queries": [
+    {
+      "query": "saya mau pesan barang ready stock untuk dikirim sekarang",
+      "relevant_doc_id": "doc5"
+    },
+    {
+      "query": "apakah ada promo atau diskon hari ini?",
+      "relevant_doc_id": "doc4"
+    },
+    {
+      "query": "toko buka hari apa saja?",
+      "relevant_doc_id": "doc9"
+    },
+    {
+      "query": "apa bahan baju rajutnya adem?",
+      "relevant_doc_id": "doc2"
+    },
+    {
+      "query": "bagaimana sistem pengiriman dan ongkir di toko ini?",
+      "relevant_doc_id": "doc1"
+    }
+  ]
+}

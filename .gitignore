@@ -21,7 +21,6 @@ venv.bak/
 logs/
 *.log
 runs/
-data/
 cols.json
 crosslingual_results.tar.gz
 
