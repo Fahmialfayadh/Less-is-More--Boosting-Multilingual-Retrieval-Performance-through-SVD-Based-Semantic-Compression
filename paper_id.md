@@ -1,4 +1,4 @@
-# Adaptasi Lintas-Bahasa dan Evaluasi Pemotongan Spektrum SVD pada *Unembedding Matrix* LLM untuk Tugas *Retrieval* Berbahasa Indonesia
+# Less is More: Meningkatkan Performa Retrieval Multilingual melalui Kompresi Semantik Berbasis SVD
 
 ---
 
@@ -34,16 +34,16 @@ di mana $V_h \in \mathbb{R}^{d \times d}$ adalah matriks vektor singular kanan. 
 
 ### 3.2. Algoritma Pergeseran Jendela Retensi Berbasis *Profiling* L2-Norm
 
-Untuk rasio kompresi 2×, dimensi target adalah $d' = 1536 / 2 = 768$. Untuk menemukan *sweet spot* pemotongan spektrum secara sistematis (alih-alih sekadar menggunakan rentang *default* dari paper rujukan), kami mengembangkan algoritma *profiling* energi laten berbasis dekomposisi SVD. Alasan utama pergeseran rentang kompresi (*cutting window shifting*) ini sangat erat kaitannya dengan karakteristik morfologis bahasa Indonesia.
+Untuk rasio kompresi 2×, dimensi target adalah $d' = 1536 / 2 = 768$. Alih-alih mengadopsi rentang *default* dari paper rujukan untuk menentukan rentang pemotongan spektrum secara sistematis, kami mengembangkan algoritma *profiling* energi laten berbasis dekomposisi SVD. Alasan utama pergeseran rentang kompresi (*cutting window shifting*) ini berkaitan langsung dengan karakteristik morfologis bahasa Indonesia.
 
 Algoritma penentuan jendela retensi ini bekerja melalui langkah berikut:
 1. Mengekstraksi matriks `lm_head` dan melakukan *Full SVD* tanpa pemotongan.
 2. Memproyeksikan vektor baris setiap token ke dalam komponen-komponen spektral, kemudian mengelompokkannya ke dalam tiga zona utama: *Head* (Top 25%), *Middle* (Mid 50%), dan *Tail* (Bot 25%).
 3. Menghitung porsi kuadrat besaran energi (*L2-norm proyeksional*) untuk mendeteksi di mana informasi semantik suatu kata bersarang.
 
-Hasil pemetaan karakteristik distribusi kelas token disajikan pada Tabel 2.
+Hasil pemetaan karakteristik distribusi kelas token disajikan pada Tabel 1.
 
-**Tabel 2 — Karakteristik Distribusi Kosakata pada Spektrum SVD Qwen2.5-1.5B**
+**Tabel 1 — Karakteristik Distribusi Kosakata pada Spektrum SVD Qwen2.5-1.5B**
 
 | Zona Spektrum | Rentang Dimensi | Karakteristik Utama | Contoh Token |
 |:---|:---:|:---|:---|
@@ -51,15 +51,15 @@ Hasil pemetaan karakteristik distribusi kelas token disajikan pada Tabel 2.
 | **Middle Spectrum** | Middle 50% | Token morfologis dan afiksasi; imbuhan, pronomina berimbuhan, sufiks pembentuk kata | `'edly'`, `'ingly'`, `'lessly'`, `' herself'`, `'为空'` |
 | **Tail Spectrum** | Bottom 25% | Frekuensi tinggi, variansi rendah lintas-konteks; partikel umum di berbagai bahasa | `' they'`, `' about'`, `' its'`, `'他们'`, `'a'`, `'\n'`, `'<\|endoftext\|>'` |
 
-Beberapa pengamatan fundamental dapat dicatat dari pola distribusi pada Tabel 2.
+Beberapa pengamatan dapat dicatat dari pola distribusi pada Tabel 1.
 
-**Pertama,** komponen *Tail Spectrum* pada Qwen2.5 didominasi oleh *stopwords* bahasa Inggris/Mandarin, abjad tunggal, serta spasi kosong. Token-token ini muncul secara konstan di semua teks sehingga variansinya secara matematis mendekati nol. Hal ini mengonfirmasi bahwa dimensi *Tail* pada bahasa manapun sebagian besar memang berisi *noise* anisotropik.
+**Pertama,** komponen *Tail Spectrum* pada Qwen2.5 didominasi oleh *stopwords* bahasa Inggris/Mandarin, abjad tunggal, serta spasi kosong. Token-token ini muncul secara konstan di semua teks sehingga variansinya mendekati nol. Hal ini mengindikasikan bahwa dimensi *Tail* pada berbagai bahasa sebagian besar berisi *noise* anisotropik.
 
-**Kedua,** berbeda dengan asumsi paper rujukan, *Head Spectrum* menyimpan penanda identitas bahasa (*language markers*). Membuang komponen ini berpotensi membunuh kemampuan model dalam membedakan konteks lintas-bahasa.
+**Kedua,** berbeda dengan asumsi paper rujukan, *Head Spectrum* menyimpan penanda identitas bahasa (*language markers*). Membuang komponen ini berpotensi mereduksi kemampuan model dalam membedakan konteks lintas-bahasa.
 
-**Ketiga, dan yang menjadi landasan algoritma pergeseran**, pengujian analitik khusus terhadap token-token imbuhan (afiksasi) esensial bahasa Indonesia membuktikan bahwa energi varians (*L2-norm*) mereka terkonsentrasi sangat kuat di kombinasi zona *Head* dan *Middle*. 
+**Ketiga,** dan menjadi landasan algoritma pergeseran: pengujian analitik terhadap token-token imbuhan (afiksasi) bahasa Indonesia menunjukkan bahwa energi varians (*L2-norm*) mereka terkonsentrasi di kombinasi zona *Head* dan *Middle*.
 
-**Tabel 3 — Distribusi L2-Norm Token Afiksasi Bahasa Indonesia pada Spektrum Qwen2.5-1.5B**
+**Tabel 2 — Distribusi L2-Norm Token Afiksasi Bahasa Indonesia pada Spektrum Qwen2.5-1.5B**
 
 | Token Imbuhan | *Head Spectrum* (Top 25%) | *Middle Spectrum* (Mid 50%) | *Tail Spectrum* (Bot 25%) |
 |:---|:---:|:---:|:---:|
@@ -76,12 +76,12 @@ Beberapa pengamatan fundamental dapat dicatat dari pola distribusi pada Tabel 2.
 | `' meng'` | 35.2% | **40.6%** | 24.2% |
 | `' mem'` | 38.9% | **41.8%** | 19.2% |
 
-Berdasarkan Tabel 3, mayoritas mutlak dari token afiksasi kritis menyandarkan **75% hingga 80%** total energi latennya pada gabungan *Head* dan *Middle Spectrum*.
+Berdasarkan Tabel 2, token afiksasi kritis mengakumulasi **75% hingga 80%** total energi latennya pada gabungan *Head* dan *Middle Spectrum*.
 
 **Sistematisasi Algoritma Pergeseran:**
-Pendekatan `English-Middle` milik paper referensi menghapus secara buta 25% spektrum pertama (*Head*). Berdasarkan Tabel 3, algoritma pemotongan referensi tersebut secara harfiah **membuang 28% hingga 38% informasi semantik** (energi *L2-norm*) dari partikel esensial sintaksis Indonesia seperti awalan `meng-`, `ter-`, dan akhiran `-nya`, `-lah`.
+Pendekatan `English-Middle` dari paper rujukan menghapus 25% spektrum pertama (*Head*). Berdasarkan Tabel 2, algoritma pemotongan tersebut **menghilangkan 28% hingga 38% energi semantik** (*L2-norm*) dari partikel sintaksis bahasa Indonesia seperti awalan `meng-`, `ter-`, dan akhiran `-nya`, `-lah`.
 
-Berpijak pada bukti empiris ini, algoritma yang kami usulkan menggeser jendela pemotongan (kompresi 50%) ke rentang dimensi yang paling strategis: **Dimensi 0 hingga 768**. Langkah geser-*cutting* ini merangkum seluruh *Head Spectrum* dan separuh atas *Middle Spectrum* (`Indonesian-Retention`). Pergeseran terkomputasi ini memastikan pelestarian fitur morfologis tetap 100% utuh tanpa terpotong, sembari tetap memangkas tuntas *noise* tak bermakna di *Tail Spectrum*.
+Berdasarkan bukti empiris ini, algoritma yang kami usulkan menggeser jendela retensi (kompresi 50%) ke rentang dimensi **0 hingga 768**, yang mencakup seluruh *Head Spectrum* dan separuh atas *Middle Spectrum* (`Indonesian-Retention`). Pergeseran ini dirancang untuk mempertahankan fitur morfologis, sekaligus mengeliminasi komponen *noise* di *Tail Spectrum*.
 
 Berdasarkan algoritma tersebut, empat konfigurasi matriks proyeksi $V_{sub} \in \mathbb{R}^{d' \times d}$ dievaluasi secara empiris:
 
@@ -122,9 +122,9 @@ Kinerja ruang semantik hasil proyeksi diukur menggunakan tiga metrik standar dal
 
 ## 4. Hasil Eksperimen
 
-Tabel 1 merangkum rata-rata performa dari masing-masing konfigurasi yang diuji.
+Tabel 3 merangkum rata-rata performa dari masing-masing konfigurasi yang diuji.
 
-**Tabel 1 — Hasil Evaluasi Metrik Lintas Bahasa (MIRACL Indonesia)**
+**Tabel 3 — Hasil Evaluasi Metrik Lintas Bahasa (MIRACL Indonesia)**
 
 | Konfigurasi | Dimensi | NDCG@10 | Recall@100 |
 |:---|:---:|:---:|:---:|
@@ -158,24 +158,45 @@ Note: Superscripts denote significant differences.
 
 ## 5. Pembahasan
 
-Hasil eksperimen pada Tabel 1 menunjukkan pola yang membantah secara telak asumsi referensi utama ketika metode tersebut diterapkan pada LLM multilingual (Qwen2.5) untuk tugas korpus berbahasa Indonesia.
+Hasil eksperimen pada Tabel 3 menunjukkan pola yang bertentangan dengan asumsi paper rujukan ketika metode tersebut diterapkan pada LLM multilingual (Qwen2.5) untuk tugas korpus berbahasa Indonesia.
 
-Pada paper referensi yang dievaluasi menggunakan bahasa Inggris, konfigurasi `English-Middle` (pembuangan *Head* dan *Tail*) diasumsikan optimal karena *Head Spectrum* dinilai hanya berisi distorsi dari *stopwords* berfrekuensi tinggi. Namun, dalam eksperimen kita, `Indonesian-Retention` (rentang `0:768` yang justru **mempertahankan** *Head*) mencetak NDCG@10 sebesar 0.2900, melampaui metode `English-Middle` secara signifikan ($p < 0.01$).
+Pada paper rujukan yang dievaluasi menggunakan bahasa Inggris, konfigurasi `English-Middle` (pembuangan *Head* dan *Tail*) diasumsikan optimal karena *Head Spectrum* dinilai hanya berisi distorsi dari *stopwords* berfrekuensi tinggi. Namun, dalam eksperimen ini, `Indonesian-Retention` (rentang `0:768` yang justru **mempertahankan** *Head*) mencapai NDCG@10 sebesar 0.2900, melampaui `English-Middle` secara signifikan ($p < 0.01$).
 
-Kesuksesan empiris dari metode `Indonesian-Retention` ini memvalidasi secara sempurna algoritma *profiling* L2-Norm yang dijabarkan pada Bab 3.2. Keberhasilan mempertahankan morfologi inti bahasa Indonesia (yang berada di *Head* dan *Middle*) memastikan representasi leksikal utuh. Di sisi lain, membuang *Tail* terbukti krusial dalam menyaring *noise* anisotropik yang nir-variansi, fakta ini dikonfirmasi oleh kegagalan sistematis konfigurasi `Tail-Retention` yang hanya mencapai skor NDCG@10 0.0808.
+Hasil ini konsisten dengan prediksi algoritma *profiling* L2-Norm yang dijabarkan pada Bab 3.2. Mempertahankan morfologi inti bahasa Indonesia — yang terkonsentrasi di zona *Head* dan *Middle* — menghasilkan representasi leksikal yang lebih utuh. Sebaliknya, konfigurasi `Tail-Retention` yang hanya mencapai NDCG@10 sebesar 0.0808 mengonfirmasi bahwa zona *Tail* didominasi oleh komponen *noise* anisotropik bervariansi rendah.
 
-**Catatan mengenai paper referensi:** Chen dkk. mendefinisikan *Edge Spectrum* berdasarkan distribusi frekuensi teks berbahasa Inggris. Eksperimen empiris ini membuktikan bahwa mentransfer buta *cutting window* Inggris ke bahasa Indonesia berakibat fatal pada keutuhan representasi linguistiknya.
+Perlu dicatat bahwa Chen dkk. mendefinisikan *Edge Spectrum* berdasarkan distribusi frekuensi teks berbahasa Inggris. Eksperimen ini menunjukkan bahwa mengadopsi jendela retensi yang sama untuk bahasa Indonesia berdampak negatif signifikan terhadap keutuhan representasi linguistiknya.
 
-Secara keseluruhan, hasil eksperimen ini menunjukkan bahwa strategi pemotongan dimensi yang dioptimalkan untuk model berbahasa Inggris tidak dapat diterapkan secara langsung pada LLM multilingual untuk tugas *retrieval* berbahasa Indonesia. Eksperimen tambahan — mencakup variasi model, rentang pemotongan, dan bahasa target lainnya — diperlukan untuk memvalidasi temuan ini lebih lanjut sebelum dapat digeneralisasi.
+Secara keseluruhan, temuan ini mengindikasikan bahwa strategi pemotongan dimensi yang dioptimalkan untuk korpus berbahasa Inggris tidak dapat diterapkan secara langsung pada LLM multilingual untuk tugas *retrieval* berbahasa Indonesia. Eksperimen lanjutan — mencakup variasi model, rentang pemotongan, dan bahasa target lainnya — diperlukan untuk memvalidasi temuan ini sebelum dapat digeneralisasi.
 
 ---
 
 ## 6. Kesimpulan dan Kontribusi Praktis
 
-Penelitian ini tidak sekadar mengevaluasi ulang batas kelayakan metodologi *EmbFilter*, melainkan mengusulkan sebuah kerangka adaptasi praktis yang membawa penemuan (*novelty*) ganda bagi efisiensi arsitektur *Retrieval-Augmented Generation* (RAG) pada sistem produksi, khususnya untuk bahasa Indonesia.
+Penelitian ini mengusulkan kerangka adaptasi praktis bagi metode *EmbFilter* yang disesuaikan dengan karakteristik linguistik bahasa Indonesia, dengan kontribusi terhadap efisiensi arsitektur *Retrieval-Augmented Generation* (RAG) pada sistem produksi.
 
-Melalui pendekatan SVD komprehensif pada matriks *unembedding*, yang secara spesifik difokuskan pada pelestarian rentang `0:768` (*Head* hingga *Middle Spectrum*), kami mencatatkan dua keuntungan komputasional secara serentak:
-1. **Reduksi Beban Infrastruktur (*Vector Database*):** Dimensi representasi semantik berhasil dikompresi sebesar **50%** (dari 1536 menjadi 768 dimensi). Hal ini secara langsung memangkas kebutuhan alokasi memori penyimpanan dan komputasi *vector search* hingga separuhnya.
-2. **Peningkatan Akurasi (*Retrieval Performance*):** Secara logis, reduksi dimensi sering kali berbanding lurus dengan degradasi akurasi. Namun, berkat penyaringan yang membersihkan *noise* anisotropik dari *Tail Spectrum* namun tetap meretensi fitur krusial imbuhan Indonesia di rentang `0:768`, metode ini mempu mendongkrak performa NDCG@10 sebesar **+82%** (dari skor baseline 0.1592 menjadi 0.2900).
+Melalui proyeksi ortogonal pada matriks *unembedding* dengan jendela retensi `0:768` (*Head* hingga *Middle Spectrum*), penelitian ini menunjukkan tiga kontribusi utama:
+1. **Reduksi Beban Infrastruktur (*Vector Database*):** Dimensi representasi semantik dikompresi sebesar **50%** (dari 1536 menjadi 768 dimensi), yang secara langsung mengurangi kebutuhan alokasi memori penyimpanan dan komputasi *vector search*.
+2. **Peningkatan Akurasi (*Retrieval Performance*):** Meskipun reduksi dimensi umumnya berkorelasi dengan degradasi akurasi, penyaringan komponen *Tail Spectrum* dengan tetap mempertahankan fitur afiksasi bahasa Indonesia di rentang `0:768` mampu meningkatkan performa NDCG@10 sebesar **+82%** (dari 0.1592 menjadi 0.2900).
+3. **Alat Diagnostik Prediktif Lintas-Model:** Algoritma L2-Norm Profiling yang dikembangkan dalam penelitian ini dapat berfungsi sebagai alat diagnostik prediktif. Sebelum mengimplementasikan reduksi pada model LLM berskala besar (misalnya 7B atau 70B parameter), praktisi dapat mengekstrak `lm_head` dan menguji sebaran energi L2-Norm dari daftar kata afiksasi. Apabila kurva energi tetap dominan di area *Head* dan *Middle*, hal tersebut memberikan justifikasi matematis bagi strategi kompresi ini tanpa memerlukan *benchmark* RAG berskala penuh.
 
-Dengan demikian, adaptasi *Head-Filter* ini menawarkan solusi kompresi semantik yang sangat efisien dan siap diimplementasikan untuk memaksimalkan utilitas LLM Multilingual sebagai *generative embedder*, tanpa memerlukan investasi komputasi tambahan seperti *fine-tuning*.
+Adaptasi *Indonesian-Retention* ini menawarkan solusi kompresi semantik yang efisien sekaligus kerangka validasi analitis untuk memaksimalkan utilitas LLM multilingual sebagai *generative embedder*, tanpa memerlukan investasi komputasi tambahan seperti *fine-tuning*.
+
+### 6.1. Validasi Skalabilitas Lintas-Model (Studi Kasus 7B)
+
+Untuk menguji generalisasi alat diagnostik tersebut, kami menerapkan *L2-Norm Profiling* pada model berskala lebih besar, yakni **Qwen2.5-7B** (3.584 dimensi laten). Hasil profil (Tabel 4) menunjukkan bahwa pola retensi energi morfologis di spektrum *Head* bukan merupakan anomali yang terbatas pada model kecil, melainkan karakteristik linguistik yang konsisten di berbagai skala arsitektur.
+
+**Tabel 4 — Distribusi Energi L2-Norm Imbuhan pada Qwen2.5-7B**
+
+| Token Afiks | Head (0-25%) | Middle (25-75%) | Tail (75-100%) |
+|:---|:---:|:---:|:---:|
+| 'nya' | 33.6% | 45.0% | 21.4% |
+| 'lah' | 38.4% | 46.3% | 15.3% |
+| 'kan' | 37.4% | 49.8% | 12.9% |
+| 'pun' | 38.7% | 49.0% | 12.3% |
+| ' meng'| 32.6% | 50.5% | 16.9% |
+| ' ber' | 29.9% | 55.4% | 14.7% |
+| ' ter' | 38.1% | 50.7% | 11.1% |
+
+Data pada Tabel 4 mengonfirmasi bahwa rentang *Head* dan *Middle* secara konsisten mengakumulasi sebagian besar (**~75% hingga 88%**) total energi semantik dari imbuhan bahasa Indonesia, termasuk pada model berskala 7B. Sebaliknya, porsi energi pada *Tail* tetap berada pada proporsi minimal.
+
+Temuan ini mendukung kesimpulan bahwa praktik membuang spektrum *Head* — yang efektif untuk mereduksi distorsi *stopwords* pada bahasa Inggris — perlu dievaluasi ulang sebelum diterapkan pada korpus bahasa Indonesia. Pada bahasa dengan karakteristik aglutinasi dan afiksasi yang kaya, spektrum *Head* berperan penting dalam merepresentasikan struktur leksikal secara utuh.
