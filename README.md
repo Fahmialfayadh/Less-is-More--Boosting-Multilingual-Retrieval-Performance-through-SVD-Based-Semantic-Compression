@@ -59,6 +59,18 @@ This research is based on the methodology proposed in:
 | `' meng'` | 35.2% | **40.6%** | 24.2% |
 | `' mem'` | 38.9% | **41.8%** | 19.2% |
 
+### Energy Curve Visualization (The "Smoking Gun" Plot)
+
+To visually demonstrate this difference in spectral energy localization, the average projection magnitude across the 1536 SVD dimensions was computed and plotted for Indonesian morphological affixes and English stopwords.
+
+![SVD Energy Curve: Indonesian Affixes vs. English Stopwords](data/energy_curve.png)
+
+This plot shows that:
+* **Indonesian morphological affixes** have energy peaks concentrated heavily in the **Head Spectrum** (dimensions 0–384), particularly within the top 200 components.
+* **English stopwords** exhibit their energy peaks in the **Middle** and **Tail** spectra, dropping significantly in the Head.
+
+This visualization clearly explains why the English-centric approach (discarding the first 25% Head dimensions) severely degrades Indonesian representation: it directly discards the critical dimensions where Indonesian morphological features are localized.
+
 ### Table 3: Cross-Lingual Evaluation on MIRACL Indonesian (Qwen2.5-1.5B)
 
 | Configuration | Dimensions | NDCG@10 | Recall@100 |

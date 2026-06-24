@@ -78,7 +78,26 @@ Beberapa pengamatan dapat dicatat dari pola distribusi pada Tabel 1.
 
 Berdasarkan Tabel 2, token afiksasi kritis mengakumulasi **75% hingga 80%** total energi latennya pada gabungan *Head* dan *Middle Spectrum*.
 
+### 3.2.1. Analisis Kurva Energi (Plot "Smoking Gun")
+
+Untuk mengonfirmasi perbedaan lokalisasi energi ini secara visual, kami memplot distribusi energi rata-rata SVD (L1-norm) untuk token afiksasi bahasa Indonesia dan stopwords bahasa Inggris di seluruh spektrum 1536 dimensi. Kurva yang dihasilkan, yang telah dihaluskan menggunakan jendela bergerak berukuran 64, disajikan pada Gambar 1.
+
+![Gambar 1 — Kurva Energi SVD: Afiks Indonesia vs. Stopwords Inggris](data/energy_curve.png)
+
+Sebagaimana diilustrasikan pada Gambar 1, pola sebaran energi antara stopwords Inggris dan afiks Indonesia menunjukkan perbedaan yang sangat kontras:
+1. **Stopwords Inggris:** Kurva energi memuncak di spektrum Middle dan Tail, namun menurun drastis di spektrum Head. Hal ini selaras dengan temuan Chen dkk., yang mengindikasikan bahwa dimensi singular tertinggi (Head) didominasi oleh noise struktural dan frekuensi pada bahasa Inggris.
+2. **Afiks Indonesia:** Sebaliknya, kurva afiksasi bahasa Indonesia memuncak sangat tajam di spektrum Head (dimensi 0-384), khususnya pada 200 dimensi komponen pertama.
+
+Plot ini menjadi bukti nyata (*smoking gun*) mengapa filter `English-Middle` (yang membuang 25% spektrum pertama) menurunkan performa representasi semantik bahasa Indonesia. Pembuangan tersebut secara langsung mengeliminasi wilayah dengan konsentrasi energi afiksasi tertinggi.
+
+### 3.2.2. Relevansi dengan Bahasa Aglutinatif Lainnya
+
+Konsentrasi energi partikel morfologis (afiks) pada komponen variansi tinggi dalam spektrum SVD merupakan karakteristik struktural bawaan dari bahasa aglutinatif. Berbeda dengan bahasa isolatif atau fleksional (seperti bahasa Inggris) yang banyak menggunakan kata terpisah untuk fungsi sintaksis, bahasa aglutinatif (seperti bahasa Turki, Finlandia, Hungaria, Korea, dan Jepang) membangun hubungan tata bahasa melalui penggabungan morfem terikat (prefiks, sufiks, infiks, konfiks) secara berantai ke kata dasar.
+
+Dalam model LLM multilingual yang dilatih menggunakan kosakata bersama (*joint vocabulary*), morfem terikat krusial ini memiliki frekuensi dokumen yang sangat tinggi dan variansi kontekstual yang rendah, sehingga diproyeksikan sangat kuat pada komponen singular tertinggi (*Head Spectrum*). Oleh karena itu, asumsi filter *English-Middle* yang menggeneralisasikan *Head Spectrum* semata-mata sebagai noise frekuensi stopwords adalah cacat secara metodologis untuk bahasa-bahasa aglutinatif. Praktisi yang bekerja dengan korpus bahasa aglutinatif perlu mempertahankan spektrum *Head* guna mencegah hilangnya fitur morfologis esensial selama kompresi semantik *post-hoc*.
+
 **Sistematisasi Algoritma Pergeseran:**
+
 Pendekatan `English-Middle` dari paper rujukan menghapus 25% spektrum pertama (*Head*). Berdasarkan Tabel 2, algoritma pemotongan tersebut **menghilangkan 28% hingga 38% energi semantik** (*L2-norm*) dari partikel sintaksis bahasa Indonesia seperti awalan `meng-`, `ter-`, dan akhiran `-nya`, `-lah`.
 
 Berdasarkan bukti empiris ini, algoritma yang kami usulkan menggeser jendela retensi (kompresi 50%) ke rentang dimensi **0 hingga 768**, yang mencakup seluruh *Head Spectrum* dan separuh atas *Middle Spectrum* (`Indonesian-Retention`). Pergeseran ini dirancang untuk mempertahankan fitur morfologis, sekaligus mengeliminasi komponen *noise* di *Tail Spectrum*.
