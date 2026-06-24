@@ -84,7 +84,7 @@ def main():
     plt.axvspan(384, 1152, color="khaki", alpha=0.15, label="Middle Spectrum (384-1152)")
     plt.axvspan(1152, 1536, color="lightgreen", alpha=0.15, label="Tail Spectrum (1152-1536)")
     
-    plt.title("SVD Energy Distribution: Indonesian Affixes vs. English Stopwords", fontsize=14, fontweight="bold")
+    plt.title("SVD Energy Distribution: Indonesian Affixes vs. English Stopwords (Qwen 2.5-1.5b)", fontsize=14, fontweight="bold")
     plt.xlabel("SVD Dimension Index (0 to 1536)", fontsize=12)
     plt.ylabel(f"Average Energy (L1-Norm, Smoothed over {window_size} dims)", fontsize=12)
     plt.xlim(0, 1536)

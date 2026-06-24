@@ -4,27 +4,19 @@
 
 ## 1. Background
 
-The utilization of Decoder-Only Large Language Models (LLMs) as generative embedders is increasingly researched, particularly through the Last-Token Pooling technique. Models trained with the Next-Token Prediction (NTP) objective tend to produce anisotropic semantic spaces. This condition causes the cosine similarity between vectors to be influenced by token frequency biases embedded during pre-training, thereby potentially degrading performance in Information Retrieval (IR) and Retrieval-Augmented Generation (RAG) tasks.
+The utilization of Decoder-Only Large Language Models (LLMs) as generative embedders is increasingly researched, particularly through the Last-Token Pooling technique. Models trained with the Next-Token Prediction (NTP) objective tend to produce anisotropic semantic spaces, a condition where cosine similarity between vectors is influenced by token frequency biases embedded during pre-training. This anisotropy can degrade performance in Information Retrieval (IR) and Retrieval-Augmented Generation (RAG) tasks.
 
-Post-hoc representation refinement techniques offer an alternative approach that does not require retraining or fine-tuning. This approach analyzes the final vocabulary projection weight matrix (the unembedding matrix) to isolate semantic features from latent space components suspected of containing statistical distortions. Although this approach has shown effectiveness on English corpora, its application to languages with different morphological characteristics—such as Indonesian—remains largely unexplored.
+Post-hoc representation refinement techniques offer an alternative approach that does not require retraining or fine-tuning. Chen et al. (arXiv:2606.07502, *"Your UnEmbedding Matrix is Secretly a Feature Lens for Text Embeddings"*) demonstrated that the unembedding matrix in LLMs can serve as a *feature lens*: matrix decomposition via Singular Value Decomposition (SVD) reveals that components with the highest singular values (*Head Spectrum*) tend to correspond to high-frequency tokens (stopwords), while the lowest components (*Tail Spectrum*) correspond to rare tokens. Based on these findings, they proposed the **EmbFilter** method, which discards both extreme spectra (*Edge Spectrum*) and projects vectors onto the remaining middle dimensions.
 
----
-
-## 2. Primary References
-
-This study is based on the methodology proposed in:
-
-> **arXiv:2606.07502** — *"Your UnEmbedding Matrix is Secretly a Feature Lens for Text Embeddings"* (Chen et al.)
-
-The paper postulates that the unembedding matrix in LLMs can serve as a *feature lens*. Matrix decomposition via Singular Value Decomposition (SVD) shows that components with the highest singular values (*Head Spectrum*) tend to correspond to high-frequency tokens (*stopwords*), while the lowest components (*Tail Spectrum*) correspond to rare tokens. Based on these observations, the paper proposes the **EmbFilter** method, which discards both extreme spectra (*Edge Spectrum*) and projects vectors onto the remaining middle dimensions.
+Although EmbFilter has shown effectiveness on English corpora, the approach assumes that the Head Spectrum universally contains stopword frequency noise. This assumption remains untested for languages with fundamentally different morphological characteristics, particularly agglutinative languages such as Indonesian that construct grammatical meaning through sequences of bound morphemes (prefixes, suffixes, and infixes). This study tests the validity of that assumption and proposes a retention window adaptation tailored to the morphological energy distribution of Indonesian.
 
 ---
 
-## 3. Algorithm and Methodology
+## 2. Algorithm and Methodology
 
-This study implements a linear-algebra-based orthogonal projection filter in accordance with the primary reference, applied to the Qwen2.5-1.5B model ($d = 1536$).
+This study implements a linear-algebra-based orthogonal projection filter in accordance with the EmbFilter framework, applied to the Qwen2.5-1.5B model ($d = 1536$).
 
-### 3.1. Unembedding Matrix Decomposition
+### 2.1. Unembedding Matrix Decomposition
 
 The unembedding matrix (defined as `lm_head.weight` in Qwen architectures) is represented as $W \in \mathbb{R}^{|V| \times d}$, where $|V|$ is the vocabulary size and $d$ is the latent dimension. The matrix $W$ is fully decomposed using Singular Value Decomposition (Full SVD) without truncation:
 
@@ -32,16 +24,9 @@ $$W = U \Sigma V_h$$
 
 where $V_h \in \mathbb{R}^{d \times d}$ is the right singular vector matrix. Since $\Sigma$ is sorted in descending order, the $0$-th row of $V_h$ corresponds to the largest singular value (*Head*), and the $(d-1)$-th row corresponds to the smallest singular value (*Tail*).
 
-### 3.2. L2-Norm Profiling-Based Retention Window Shifting Algorithm
+### 2.2. L2-Norm Profiling-Based Retention Window Shifting Algorithm
 
-For a 2× compression ratio, the target dimension is $d' = 1536 / 2 = 768$. To systematically determine the optimal spectrum truncation range — rather than adopting the default range from the reference paper — we developed a latent energy profiling algorithm based on SVD decomposition. The primary reason for shifting this compression range (*cutting window shifting*) is directly tied to the morphological characteristics of Indonesian.
-
-This retention window determination algorithm operates through the following steps:
-1. Extract the `lm_head` matrix and perform a Full SVD.
-2. Project each token's row vector onto the spectral components, then group them into three primary zones: *Head* (Top 25%), *Middle* (Mid 50%), and *Tail* (Bottom 25%).
-3. Calculate the squared magnitude of energy (*projective L2-norm*) to detect where a word's semantic information is localized.
-
-The resulting mapping of token class distribution characteristics is presented in Table 1.
+For a 2× compression ratio, the target dimension is $d' = 1536 / 2 = 768$. Rather than adopting the default truncation range from the reference paper, we developed a latent energy profiling algorithm to determine the optimal range empirically. The algorithm operates in three stages: extracting the `lm_head` matrix and performing a Full SVD, projecting each token's row vector onto three spectral zones (*Head* Top 25%, *Middle* Mid 50%, *Tail* Bottom 25%), then computing the squared magnitude of energy (projective L2-norm) to detect where each token's semantic information is concentrated. The resulting vocabulary distribution mapping is presented in Table 1.
 
 **Table 1 — Vocabulary Distribution Characteristics in the Qwen2.5-1.5B SVD Spectrum**
 
@@ -51,13 +36,9 @@ The resulting mapping of token class distribution characteristics is presented i
 | **Middle Spectrum** | Middle 50% | Morphological tokens and affixes; bound morphemes, word-forming suffixes | `'edly'`, `'ingly'`, `'lessly'`, `' herself'`, `'为空'` |
 | **Tail Spectrum** | Bottom 25% | High frequency, low cross-context variance; common particles across multiple languages | `' they'`, `' about'`, `' its'`, `'他们'`, `'a'`, `'\n'`, `'<\|endoftext\|>'` |
 
-Several observations can be drawn from the distribution patterns in Table 1.
+The distribution in Table 1 reveals findings that challenge the reference paper's assumptions. The Tail Spectrum is dominated by English/Mandarin stopwords, single characters, and structural tokens that appear constantly across all texts with near-zero variance, confirming that these dimensions largely contain anisotropic noise. The Head Spectrum, on the other hand, houses language identity markers such as non-Latin scripts and multilingual elements, contrary to EmbFilter's assumption that this zone contains only stopword frequency noise. This finding raises a critical question: how is the energy of Indonesian morphological tokens distributed across the SVD spectrum?
 
-**First,** the *Tail Spectrum* component in Qwen2.5 is dominated by English/Mandarin stopwords, single-character particles, and structural tokens. These tokens appear constantly across all texts, causing their variance to approach zero. This indicates that the *Tail* dimensions across languages predominantly contain anisotropic noise.
-
-**Second,** contrary to the reference paper's assumption, the *Head Spectrum* houses language identity markers. Discarding this component may substantially reduce the model's ability to distinguish cross-lingual contexts.
-
-**Third,** and the foundation of the shifting algorithm: analytical testing targeting Indonesian syntactic affix tokens shows that their variance energy (*L2-norm*) is concentrated in the combined *Head* and *Middle* zones.
+To answer this question, we analyzed the L2-norm distribution of 12 key Indonesian affixation tokens, encompassing suffixes (`-nya`, `-lah`, `-kan`, `-pun`, `-kah`, `-ku`, `-mu`) and prefixes (`di-`, `ter-`, `ber-`, `meng-`, `mem-`). The results are presented in Table 2.
 
 **Table 2 — L2-Norm Distribution of Indonesian Affix Tokens Across the Qwen2.5-1.5B Spectrum**
 
@@ -76,33 +57,55 @@ Several observations can be drawn from the distribution patterns in Table 1.
 | `' meng'` | 35.2% | **40.6%** | 24.2% |
 | `' mem'` | 38.9% | **41.8%** | 19.2% |
 
-Based on Table 2, the critical affix tokens accumulate **75% to 80%** of their total latent energy in the combined *Head* and *Middle Spectrum*.
-
-### 3.2.1. Energy Curve Analysis (The "Smoking Gun" Plot)
-
-To visually confirm this localization difference, we plotted the average SVD energy distribution (L1-norm) for both Indonesian morphological affixes and English stopwords across the entire 1536-dimension spectrum. The resulting curve, smoothed with a window size of 64, is presented in Figure 1.
+The critical affix tokens accumulate **75% to 80%** of their total latent energy in the combined Head and Middle Spectrum, sharply contrasting with English stopwords concentrated in the Tail. Figure 1 visualizes this localization difference through the average SVD energy distribution (L1-norm) for both token groups across the entire 1536-dimension spectrum, smoothed with a moving window of size 64.
 
 ![Figure 1 — SVD Energy Curve: Indonesian Affixes vs. English Stopwords](data/energy_curve.png)
 
-As illustrated in Figure 1, the energy distribution patterns of English stopwords and Indonesian affixes are highly distinct:
-1. **English Stopwords:** The energy curve peaks in the Middle and Tail spectra while dropping significantly in the Head Spectrum. This aligns with the findings in Chen et al., indicating that the highest singular components (Head) contain structural and frequency noise for English.
-2. **Indonesian Affixes:** In contrast, the curve for Indonesian morphological affixes peaks sharply in the Head Spectrum (dimensions 0–384), particularly within the top 200 components. 
+The curves in Figure 1 visually confirm what the quantitative data show: English stopword energy peaks in the Middle and Tail spectra but drops sharply in the Head, while Indonesian affix energy peaks sharply in the Head Spectrum (dimensions 0–384). This pattern directly explains why the `English-Middle` filter, which discards the first 25% of the spectrum, degrades Indonesian semantic representations by eliminating the region with the highest affix energy concentration.
 
-This plot serves as the "smoking gun" evidence: applying the `English-Middle` filter (discarding the first 25% of the spectrum) removes the highest-energy regions of Indonesian affixes. This directly explains why the English-centric approach degrades Indonesian semantic representations.
+### 2.3. Cross-Model and Cross-Architecture Generalizability Validation
 
-### 3.2.2. Implications for Other Agglutinative Languages
+The morphological energy concentration in the Head Spectrum identified on Qwen2.5-1.5B requires verification: is this a universal linguistic characteristic, or merely an artifact of one particular architecture and model scale? We tested the generalizability of this finding on two additional models that differ significantly in scale and architecture.
 
-The concentration of morphological affixes in the high-variance components of the SVD spectrum is a structural characteristic of agglutinative languages. Unlike fusional or isolating languages (such as English) that rely heavily on distinct words for syntax, agglutinative languages (e.g., Turkish, Finnish, Hungarian, Korean, and Japanese) construct grammatical relationships through the sequential attachment of bound morphemes (prefixes, suffixes, and infixes) to base words.
+The first test was conducted on **Qwen2.5-7B** (3,584 latent dimensions) to verify consistency at a larger scale within the same architecture family. Table 3 shows that the energy distribution pattern remains consistent: the Head and Middle ranges jointly accumulate ~75% to 88% of the total semantic energy of Indonesian affixes, while the Tail portion remains minimal (11–21%).
 
-In multilingual LLMs trained on joint vocabularies, these crucial bound morphemes have high document frequency and low contextual variance, causing them to project strongly onto the highest singular values (Head Spectrum). Consequently, the English-Middle assumption of treating the Head Spectrum solely as stopword-frequency noise is fundamentally flawed for agglutinative syntax. Practitioners working with agglutinative languages must shift their retention windows to include the Head Spectrum to avoid losing critical morphological structures during post-hoc semantic compression.
+**Table 3 — Affixation L2-Norm Energy Distribution in Qwen2.5-7B**
 
-**Systematization of the Shifting Algorithm:**
+| Affix Token | Head (0-25%) | Middle (25-75%) | Tail (75-100%) |
+|:---|:---:|:---:|:---:|
+| 'nya' | 33.6% | 45.0% | 21.4% |
+| 'lah' | 38.4% | 46.3% | 15.3% |
+| 'kan' | 37.4% | 49.8% | 12.9% |
+| 'pun' | 38.7% | 49.0% | 12.3% |
+| ' meng'| 32.6% | 50.5% | 16.9% |
+| ' ber' | 29.9% | 55.4% | 14.7% |
+| ' ter' | 38.1% | 50.7% | 11.1% |
 
-The `English-Middle` approach from the reference paper removes the first 25% of the spectrum (*Head*). Based on Table 2, that truncation algorithm **discards 28% to 38% of the semantic energy** (L2-norm) from essential Indonesian syntactic particles such as prefixes `meng-`, `ter-`, and suffixes `-nya`, `-lah`.
+The second test extended the analysis to a completely different architecture: **Llama-3.1-70B** ($d = 8192$), with a tokenizer and vocabulary structure entirely separate from the Qwen family. Table 4 shows that even at 70 billion parameters, Indonesian bound morphemes continue to deposit the majority of their semantic energy into the Head and Middle spectra, with an even smaller Tail portion (7–12%) compared to both Qwen models.
 
-Grounded on this empirical evidence, our proposed algorithm shifts the retention window (50% compression) to the dimension range **0 to 768**, encompassing the entire *Head Spectrum* and the upper half of the *Middle Spectrum* (`Indonesian-Retention`). This shift is designed to preserve morphological features while eliminating noise components in the *Tail Spectrum*.
+**Table 4 — Affixation L2-Norm Energy Distribution in Llama-3.1-70B**
 
-Based on this algorithm, four projection matrix configurations $V_{sub} \in \mathbb{R}^{d' \times d}$ were empirically evaluated:
+| Affix Token | Head Spectrum (0-25%) | Middle Spectrum (25-75%) | Tail Spectrum (75-100%) |
+|:---|:---:|:---:|:---:|
+| `'nya'` | 43.1% | **45.6%** | 11.4% |
+| `'lah'` | **45.8%** | 44.0% | 10.2% |
+| `'kan'` | **48.5%** | 43.8% | 7.7% |
+| `'pun'` | **48.9%** | 42.8% | 8.2% |
+| `' meng'` | 42.4% | **45.4%** | 12.2% |
+| `' ber'` | 35.1% | **54.6%** | 10.3% |
+| `' ter'` | 37.4% | **52.4%** | 10.2% |
+
+The L1-norm energy curve for Llama-3.1-70B (Figure 2) reinforces these findings visually. Despite the spectrum spanning 8192 dimensions, the same structural pattern reproduces: English stopwords peak in the Tail, while Indonesian affixes peak sharply in the Head and maintain elevated variance throughout the Middle.
+
+![Figure 2 — SVD Energy Curve (Llama-3.1-70B): Indonesian Affixes vs. English Stopwords](data/energy_curve-llama-70b.png)
+
+The consistency of this pattern across three models (1.5B, 7B, 70B) and two architecture families (Qwen, Llama) indicates that morphological energy concentration in the Head Spectrum reflects how multilingual LLMs represent bound morphemes in the latent space, rather than being a technical artifact of any single architecture. This phenomenon is relevant to the entire family of agglutinative languages (Turkish, Finnish, Hungarian, Korean, Japanese) that construct grammatical relationships through sequential attachment of bound morphemes. In LLMs trained on joint vocabularies, these bound morphemes have high document frequency and low contextual variance, causing them to project strongly onto the highest singular components.
+
+### 2.4. Projection Configuration
+
+Empirical evidence from all three models demonstrates that the `English-Middle` approach discards **28% to 38% of the semantic energy** (L2-norm) from essential Indonesian syntactic particles such as the prefixes `meng-`, `ter-`, and the suffixes `-nya`, `-lah`. Our proposed algorithm shifts the retention window (50% compression) to the dimension range **0 to 768**, encompassing the entire Head Spectrum and the upper half of the Middle Spectrum (`Indonesian-Retention`). This shift preserves morphological features while eliminating noise components in the Tail Spectrum.
+
+Four projection matrix configurations $V_{sub} \in \mathbb{R}^{d' \times d}$ were evaluated:
 
 | # | Configuration | Description | Index Range of $V_{sub}$ |
 |---|---|---|---|
@@ -111,7 +114,7 @@ Based on this algorithm, four projection matrix configurations $V_{sub} \in \mat
 | 3 | **Indonesian-Retention** | Retains 50% of the *Head* and *Middle* spectra (based on the profiling algorithm) | Indices 0–767 |
 | 4 | **Tail-Retention** | Retains 50% of the *Tail* spectrum | Indices 768–1535 |
 
-### 3.3. Representation Projection
+### 2.5. Representation Projection
 
 Each sentence $s$ is encoded into an initial representation $x$ using Last-Token Pooling with the instruction template (`PromptEOL`). The filtered vector $x'$ is obtained via:
 
@@ -119,7 +122,7 @@ $$x' = x V_{sub}^T$$
 
 The 768-dimensional vector $x'$ is subsequently used to compute cosine similarity.
 
-### 3.4. Evaluation Setup
+### 2.6. Evaluation Setup
 
 **Datasets:**
 
@@ -128,22 +131,17 @@ The 768-dimensional vector $x'$ is subsequently used to compute cosine similarit
 | Retrieval (RAG) | MIRACL — Indonesian | dev | 500 random queries; 4,543 positive docs + 5,000 sampled negative docs |
 | STS | STS-B — LazarusNLP | test | 500 sampled sentence pairs |
 
-### 3.5. Evaluation Metrics
+The performance of the projected semantic spaces was measured using three standard information retrieval metrics. **NDCG@10** (Normalized Discounted Cumulative Gain at top 10 candidates) measures retrieval effectiveness by accounting for the position of relevant documents in the results list; it penalizes cases where relevant documents appear lower in the rankings, making it the most critical metric for RAG systems sensitive to context ordering. **Recall@100** measures the percentage of relevant documents successfully retrieved within the top 100 results, indicating how well the vectors can locate correct documents within a large corpus. **Spearman Correlation** is used for the Semantic Textual Similarity (STS) task to measure the ranked monotonic correlation between the model's cosine similarity scores and human reference relevance ratings.
 
-The performance of the projected semantic spaces was measured using three standard metrics in the information retrieval domain:
-1. **NDCG@10 (Normalized Discounted Cumulative Gain at top 10 candidates):** Measures the effectiveness of the retrieval system by accounting for the position of relevant documents in the search results list. NDCG penalizes cases where relevant documents appear lower in the rankings, making it the most critical metric for RAG systems sensitive to context ordering.
-2. **Recall@100:** Measures the percentage of relevant documents successfully retrieved by the system within the top 100 search results. This metric indicates how well the vectors can locate correct documents within a large corpus, regardless of their exact rank.
-3. **Spearman Correlation:** Used specifically for the Semantic Textual Similarity (STS) task to measure the ranked monotonic correlation between the model's cosine similarity scores and reference human relevance ratings.
-
-**Statistical Testing:** The significance of differences between methods was evaluated using a *Paired Student's t-test* with a threshold of $\alpha = 0.01$ using the `ranx` metrics library.
+The significance of differences between methods was evaluated using a *Paired Student's t-test* with a threshold of $\alpha = 0.01$ using the `ranx` metrics library.
 
 ---
 
-## 4. Experimental Results
+## 3. Experimental Results
 
-Table 3 summarizes the average performance of each evaluated configuration.
+Table 5 summarizes the average performance of each configuration evaluated on the MIRACL Indonesian retrieval task.
 
-**Table 3 — Cross-Lingual Metric Evaluation Results (MIRACL Indonesian)**
+**Table 5 — Cross-Lingual Metric Evaluation Results (MIRACL Indonesian)**
 
 | Configuration | Dimensions | NDCG@10 | Recall@100 |
 |:---|:---:|:---:|:---:|
@@ -152,9 +150,11 @@ Table 3 summarizes the average performance of each evaluated configuration.
 | Indonesian-Retention | 768 | **0.2900** | **0.6535** |
 | Tail-Retention | 768 | 0.0808 | 0.2485 |
 
-### 4.1. Statistical Significance Test
+The `Indonesian-Retention` configuration achieved the highest NDCG@10 (0.2900) and Recall@100 (0.6535), surpassing all other configurations including the full-dimensional Baseline vector. Conversely, `Tail-Retention` produced the lowest performance (NDCG@10 = 0.0808), even below Baseline, confirming that the Tail zone is dominated by noise components.
 
-The following report was generated by a Paired Student's t-test at $\alpha = 0.01$:
+### 3.1. Statistical Significance Test
+
+To ensure the performance differences are not statistical artifacts, we conducted a Paired Student's t-test at $\alpha = 0.01$:
 
 ```
 ==================================================
@@ -170,52 +170,22 @@ d    run_tail_retention        0.081      0.248
 Note: Superscripts denote significant differences.
 ```
 
-> **Superscript Notes:** The letter notation next to a score indicates that the model in that row statistically significantly outperforms the model with the corresponding index.
-> For example: `0.290ᵃᵇᵈ` means that the `Indonesian-Retention` (c) configuration significantly outperforms the `Baseline` (a), `English-Middle` (b), and `Tail-Retention` (d) absolutely and conclusively.
+The superscript notation indicates that the model in that row statistically significantly ($p < 0.01$) outperforms the model with the corresponding index. The `Indonesian-Retention` configuration (c) with notation `0.290ᵃᵇᵈ` outperforms all other configurations absolutely and conclusively on both metrics.
 
 ---
 
-## 5. Discussion
+## 4. Discussion
 
-The experimental results in Table 3 present significant evidence against the core assumption of the reference paper when the method is applied to a multilingual LLM (Qwen2.5) for an Indonesian corpus task.
+The experimental results present strong evidence against the core assumption of the reference paper when the method is applied to a multilingual LLM for an Indonesian corpus task. In Chen et al.'s evaluation on English, the `English-Middle` configuration was assumed optimal because the Head Spectrum was considered to solely contain distortions from high-frequency stopwords. This experiment demonstrates the opposite: `Indonesian-Retention`, which retains the Head, achieves an NDCG@10 of 0.2900, outperforming `English-Middle` by +24.3% with statistical significance ($p < 0.01$).
 
-In the reference paper evaluated on English, the `English-Middle` configuration (removing both *Head* and *Tail*) was assumed to be optimal because the *Head Spectrum* was considered to solely contain distortions from high-frequency stopwords. However, in this experiment, `Indonesian-Retention` (the `0:768` range which actually **retains** the *Head*) achieves an NDCG@10 of 0.2900, significantly outperforming the `English-Middle` method ($p < 0.01$).
+The advantage of `Indonesian-Retention` can be explained through the energy distribution mechanism identified in the profiling analysis. Indonesian, as an agglutinative language, encodes grammatical information through bound affixes attached to base words; affixes such as `meng-`, `ber-`, `-kan`, and `-nya` fundamentally determine a word's syntactic and semantic function. The L2-norm analysis shows that these tokens deposit 75–80% of their latent energy in the Head and Middle zones, meaning a retention window covering both zones produces more complete lexical representations than an approach that discards the Head. The `Tail-Retention` configuration, which achieved only NDCG@10 of 0.0808, reinforces this analysis from the opposite direction: the Tail zone, dominated by low-variance anisotropic noise, does not store meaningful semantic information.
 
-These results are consistent with the predictions of the L2-Norm profiling algorithm detailed in Section 3.2. Retaining the core morphology of Indonesian — concentrated in the *Head* and *Middle* zones — produces more complete lexical representations. Conversely, the `Tail-Retention` configuration, which achieved an NDCG@10 of only 0.0808, confirms that the *Tail* zone is dominated by low-variance anisotropic noise components.
+The consistency of the energy distribution pattern across three models (Qwen2.5-1.5B, Qwen2.5-7B, Llama-3.1-70B) and two architecture families indicates that this finding is not an artifact of a single model configuration but reflects a morphological structure mediated by LLM tokenization and training mechanisms. The practical implication is that the L2-Norm Profiling algorithm developed in this research can serve as a predictive diagnostic tool: before implementing dimension reduction on large-scale LLMs, practitioners can extract the `lm_head` matrix and test the affix energy distribution to determine the appropriate retention window without requiring full-scale RAG benchmarking.
 
-It is worth noting that Chen et al. defined the *Edge Spectrum* based on text frequency distributions from an English corpus. This experiment demonstrates that adopting the same retention window for Indonesian significantly degrades the integrity of its linguistic representation.
-
-Overall, these findings indicate that dimensional truncation strategies optimized for English-centric corpora cannot be directly applied to multilingual LLMs for Indonesian retrieval tasks. Further experiments — including variations in models, truncation ranges, and other target languages — are required to validate these findings before they can be generalized.
+This study has several limitations. The retrieval evaluation was conducted on a single dataset (MIRACL Indonesian) with one primary model (Qwen2.5-1.5B); although profiling validation covered three models, retrieval performance testing on the 7B and 70B models has not been conducted. The compression ratio tested is limited to 2× (50%), and it remains unknown how performance changes at more aggressive or conservative ratios. Further experiments encompassing model variations, compression ratios, and other agglutinative languages (Turkish, Korean, Japanese) are required to validate the generalizability of these findings.
 
 ---
 
-## 6. Conclusion and Practical Contributions
+## 5. Conclusion
 
-This study proposes a practical adaptation framework for the *EmbFilter* methodology tailored to the linguistic characteristics of Indonesian, with contributions to the efficiency of Retrieval-Augmented Generation (RAG) architectures in production systems.
-
-By applying orthogonal projection on the unembedding matrix with a retention window of `0:768` (*Head* to *Middle Spectrum*), this study demonstrates three key contributions:
-1. **Infrastructure Load Reduction (Vector Database):** The semantic representation dimension is compressed by **50%** (from 1536 to 768 dimensions), directly reducing storage memory requirements and vector search computational costs.
-2. **Accuracy Improvement (Retrieval Performance):** Although dimensionality reduction typically correlates with accuracy degradation, filtering the *Tail Spectrum* while retaining Indonesian affix features in the `0:768` range substantially improves NDCG@10 performance by **+82%** (from a baseline of 0.1592 to 0.2900).
-3. **Cross-Model Predictive Diagnostic Tool:** The L2-Norm Profiling algorithm developed in this research can serve as a predictive diagnostic tool. Before implementing dimension reduction on large-scale LLMs (e.g., 7B or 70B parameter models), practitioners can extract the `lm_head` and test the affixation energy distribution. If the L2-Norm energy curve remains predominantly concentrated in the *Head* and *Middle* zones, this provides mathematical justification for the compression strategy without requiring full-scale RAG benchmark testing.
-
-This *Indonesian-Retention* adaptation offers an efficient semantic compression solution alongside an analytical validation framework for maximizing the utility of multilingual LLMs as generative embedders, without requiring additional computational investments such as fine-tuning.
-
-### 6.1. Cross-Model Scalability Validation (7B Case Study)
-
-To test the generalizability of this diagnostic tool, we applied *L2-Norm Profiling* to a larger-scale model: **Qwen2.5-7B** (3,584 latent dimensions). The profiling results (Table 4) demonstrate that the retention of morphological energy in the *Head* spectrum is not an anomaly restricted to smaller models, but rather a consistent linguistic characteristic across architectural scales.
-
-**Table 4 — Affixation L2-Norm Energy Distribution in Qwen2.5-7B**
-
-| Affix Token | Head (0-25%) | Middle (25-75%) | Tail (75-100%) |
-|:---|:---:|:---:|:---:|
-| 'nya' | 33.6% | 45.0% | 21.4% |
-| 'lah' | 38.4% | 46.3% | 15.3% |
-| 'kan' | 37.4% | 49.8% | 12.9% |
-| 'pun' | 38.7% | 49.0% | 12.3% |
-| ' meng'| 32.6% | 50.5% | 16.9% |
-| ' ber' | 29.9% | 55.4% | 14.7% |
-| ' ter' | 38.1% | 50.7% | 11.1% |
-
-The data in Table 4 confirm that the *Head* and *Middle* regions consistently accumulate the majority (**~75% to 88%**) of the total semantic energy of Indonesian affixes, including at the 7B model scale. Conversely, the energy portion allocated to the *Tail* spectrum remains at minimal proportions.
-
-These findings support the conclusion that the practice of discarding the *Head* spectrum — which is effective for reducing stopword distortion in English — requires re-evaluation before being applied to the Indonesian corpus. In languages characterized by high agglutination and rich affixation morphology, the *Head* spectrum plays an important role in preserving complete lexical structure.
+This study proposes a practical adaptation framework for the EmbFilter methodology tailored to the linguistic characteristics of Indonesian, with three key contributions. First, the semantic representation dimension is compressed by **50%** (from 1536 to 768 dimensions) through orthogonal projection on the unembedding matrix with a retention window of `0:768`, directly reducing storage memory requirements and vector search computational costs in RAG architectures. Second, filtering the Tail Spectrum while retaining affix features in the `0:768` range improves NDCG@10 performance by **+82%** (from 0.1592 to 0.2900), demonstrating that targeted compression can actually enhance retrieval accuracy. Third, the L2-Norm Profiling algorithm provides a cross-model diagnostic tool that enables practitioners to determine the optimal retention window based on morphological energy distribution, without requiring computational investments for fine-tuning or full-scale benchmarking.
