@@ -1,0 +1,44 @@
+# Python & environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.env
+
+# Tooling caches
+.uv_cache/
+.hf_cache/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Logs & Data outputs
+logs/
+*.log
+runs/
+data/
+cols.json
+crosslingual_results.tar.gz
+
+# Models & Weights
+models/
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# Editor & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+#skill
+skills/
