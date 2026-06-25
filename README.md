@@ -2,13 +2,14 @@
 
 This repository contains the implementation and evaluation framework for post-hoc representation purification and algebraic dimension reduction on multilingual Decoder-Only Large Language Models (LLMs) used as generative embedders. 
 
-For the complete research details, methodology, and comprehensive experimental results, please read the full papers:
-- 🇬🇧 [English Version](paper_en.md)
-- 🇮🇩 [Indonesian Version](paper_id.md)
+For the complete research details, please read the full papers:
+- [English Version (pdf)](less_is_more_en.pdf)
+- [English Version (md)](less_is_more_en.md)
+- [Indonesian Version (md)](less_is_more_id.md)
 
 ---
 
-## 🚀 Key Highlights
+## Key Highlights
 
 * **Problem**: EmbFilter (Chen et al., 2026) discards the Head SVD spectrum, assuming it only contains high-frequency stopword noise. While true for English, this assumption fails for agglutinative languages.
 * **Discovery**: Through L2-Norm profiling, we show that critical Indonesian morphological affixes (e.g., `-nya`, `-lah`, `-kan`, `meng-`, `ber-`, `ter-`) concentrate **75% to 88%** of their semantic energy in the Head and Middle spectra.
@@ -21,7 +22,7 @@ For the complete research details, methodology, and comprehensive experimental r
 
 ---
 
-## 📂 Directory Structure
+## Directory Structure
 
 * `src/qwen_embed_filter.py`: Pipeline for extracting Qwen2.5 embeddings and applying SVD retention windows.
 * `src/embed_filter_model.py`: Baseline pipeline class for Encoder-only models (e.g., IndoBERT).
@@ -32,7 +33,7 @@ For the complete research details, methodology, and comprehensive experimental r
 
 ---
 
-## 🛠️ Installation
+## Installation
 
 This repository manages its environment and Python dependencies using `uv`.
 
@@ -48,7 +49,7 @@ uv pip install -r requirements.txt
 
 ---
 
-## 💻 Execution Guide
+## Execution Guide
 
 Before executing scripts locally, add the `src` directory to your `PYTHONPATH`:
 
