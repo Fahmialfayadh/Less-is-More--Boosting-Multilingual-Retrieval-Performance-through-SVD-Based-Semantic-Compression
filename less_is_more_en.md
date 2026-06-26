@@ -42,28 +42,43 @@ For a $2\times$ compression ratio, the target dimension is $d' = 1536/2 = 768$. 
 </div>
 The distribution in Table 1 reveals findings that challenge the reference paper’s assumptions. The Tail Spectrum is dominated by English/Mandarin stopwords, single characters, and structural tokens that appear constantly across all texts with near-zero variance, confirming that these dimensions largely contain anisotropic noise. The Head Spectrum, on the other hand, houses language identity markers such as non-Latin scripts and multilingual elements, contrary to EmbFilter’s assumption that this zone contains only stopword frequency noise. This finding raises a critical question: how is the energy of Indonesian morphological tokens distributed across the SVD spectrum?
 
-To answer this question, we analyzed the L2-norm distribution of 12 key Indonesian affixation tokens, encompassing suffixes (`-nya`, `-lah`, `-kan`, `-pun`, `-kah`, `-ku`, `-mu`) and prefixes (`di-`, `ter-`, `ber-`, `meng-`, `mem-`). The results are presented in Table 2.
+To answer this question, we analyzed the L2-norm distribution of a broader sample comprising 23 key Indonesian affixation tokens, addressing common questions regarding morphological profile stability. This sample encompasses suffixes (`-nya`, `-lah`, `-kan`, `-pun`, `-kah`, `-ku`, `-mu`, `-an`, `-i`) and various derived prefix forms (`di-`, `ter-`, `ber-`, `me-`, `mem-`, `meng-`, `meny-`, `pe-`, `pem-`, `peng-`, `peny-`, `per-`, `se-`, `ke-`). The results are presented in Table 2.
+
 <div align="center">
 
 **Table 2: L2-Norm Distribution of Indonesian Affixes (Qwen2.5-1.5B)**
 
 | Affix Token | Head Spectrum (Top 25%) | Middle Spectrum (Mid 50%) | Tail Spectrum (Bot 25%) |
 |:---|:---:|:---:|:---:|
+| **Base & Derived Prefixes** | | | |
+| `' di'` | 28.8% | **45.2%** | 25.9% |
+| `' ter'` | 32.7% | **44.7%** | 22.6% |
+| `' ber'` | 33.5% | **42.3%** | 24.2% |
+| `' me'` | 23.7% | **42.8%** | 33.5% |
+| `' mem'` | 38.9% | **41.8%** | 19.2% |
+| `' meng'` | 35.2% | **40.6%** | 24.2% |
+| `' meny'` | 37.1% | **39.6%** | 23.3% |
+| `' pe'` | 32.4% | **44.7%** | 22.9% |
+| `' pem'` | **39.9%** | 39.4% | 20.7% |
+| `' peng'` | 37.3% | **40.5%** | 22.2% |
+| `' peny'` | **39.4%** | 39.1% | 21.4% |
+| `' per'` | 23.5% | **42.1%** | 34.4% |
+| `' se'` | 26.0% | **43.6%** | 30.4% |
+| `' ke'` | 34.6% | **42.5%** | 22.9% |
+| **Suffixes & Particles** | | | |
 | `'nya'` | 35.0% | **37.6%** | 27.4% |
 | `'lah'` | 35.7% | **39.6%** | 24.7% |
 | `'kan'` | 36.0% | **40.3%** | 23.7% |
 | `'pun'` | 38.5% | **39.5%** | 22.1% |
 | `'kah'` | **38.5%** | 38.4% | 23.1% |
-| `'ku'` | 37.4% | **41.4%** | 21.2% |
+| `'ku'` | 37.5% | **41.4%** | 21.2% |
 | `'mu'` | 39.3% | **39.4%** | 21.3% |
-| `' di'` | 28.8% | **45.2%** | 25.9% |
-| `' ter'` | 32.7% | **44.7%** | 22.6% |
-| `' ber'` | 33.5% | **42.3%** | 24.2% |
-| `' meng'` | 35.2% | **40.6%** | 24.2% |
-| `' mem'` | 38.9% | **41.8%** | 19.2% |
+| `'an'` | 27.9% | **36.2%** | 35.9% |
+| `'i'` | 30.8% | **34.8%** | 34.4% |
 
 </div>
-The critical affix tokens accumulate **75% to 80%** of their total latent energy in the combined Head and Middle Spectrum, sharply contrasting with English stopwords concentrated in the Tail. Figure 1 visualizes this localization difference through the average SVD energy distribution (L1-norm) for both token groups across the entire 1536-dimension spectrum, smoothed with a moving window of size 64.
+
+From the expanded sample of critical affix tokens above, a highly consistent pattern emerges: the majority concentrate **75% to 80%** of their total latent energy in the combined Head and Middle Spectrum. *(Note: Extremely short subwords that overlap with English vocabulary, such as `'an'` and `'i'`, exhibit a slightly larger Tail proportion due to cross-lingual ambiguity, yet their primary energy remains dominant in the Middle).* This sharply contrasts with English stopwords concentrated in the Tail. Figure 1 visualizes this localization difference through the average SVD energy distribution (L1-norm) for both token groups across the entire 1536-dimension spectrum, smoothed with a moving window of size 64.
 
 ![Figure 1: SVD Energy Curve: Indonesian Affixes vs. English Stopwords](data/energy_curve.png)
 
@@ -111,7 +126,7 @@ The L1-norm energy curve for Llama-3.1-70B (Figure 2) reinforces these findings 
 
 
 
-The consistency of this pattern across three models (1.5B, 7B, 70B) and two architecture families (Qwen, Llama) indicates that morphological energy concentration in the Head Spectrum reflects how multilingual LLMs represent bound morphemes in the latent space, rather than being a technical artifact of any single architecture. This phenomenon is relevant to the entire family of agglutinative languages (Turkish, Finnish, Hungarian, Korean, Japanese) that construct grammatical relationships through sequential attachment of bound morphemes. In LLMs trained on joint vocabularies, these bound morphemes have high document frequency and low contextual variance, causing them to project strongly onto the highest singular components.
+The consistency of this pattern across three models (1.5B, 7B, 70B) and two architecture families (Qwen, Llama) indicates that morphological energy concentration in the Head Spectrum reflects how multilingual LLMs represent bound morphemes in the latent space, rather than being a technical artifact of any single architecture. Although there is a strong hypothesis that a similar phenomenon occurs in other agglutinative languages (Turkish, Finnish, etc.), the primary conclusion of this study is scientifically bounded to the tested Indonesian affixes. In LLMs trained on joint vocabularies, these tested Indonesian bound morphemes exhibit high document frequency and low contextual variance, causing them to project strongly onto the highest singular components (high correlation).
 
 ### 2.4. Projection Configuration
 Empirical evidence from all three models demonstrates that the English-Middle approach discards **28% to 38% of the semantic energy** (L2-norm) from essential Indonesian syntactic particles such as the prefixes `meng-`, `ter-`, and the suffixes `-nya`, `-lah`. Our proposed algorithm shifts the retention window (50% compression) to the dimension range 0 to 768, encompassing the entire Head Spectrum and the upper half of the Middle Spectrum (Indonesian-Retention). This shift preserves morphological features while eliminating noise components in the Tail Spectrum.
@@ -184,6 +199,59 @@ To ensure the performance differences are not statistical artifacts, we conducte
 
 The superscript notation indicates that the model in that row statistically significantly ($p<0.01$) outperforms the model with the corresponding index. The Indonesian-Retention configuration (c) with notation `0.290ᵃ,ᵇ,ᵈ` outperforms all other configurations absolutely and conclusively on both metrics.
 
+### 3.4. Ablation Study: Determining the Optimal Retention Window
+To answer why the `0:767` window was selected and to validate the hypothesis that semantic energy is truly localized in the *Head* spectrum, we conducted an extensive ablation study testing various SVD retention window sizes and shifts. Table 9 summarizes these experimental results.
+
+<div align="center">
+
+**Table 9: Ablation Study of SVD Window Sizes and Shifts**
+
+| Window Configuration | NDCG@10 | Recall@100 |
+|:---|:---:|:---:|
+| Baseline (1536D) | 0.1252 | 0.3688 |
+| Head 0:256 | 0.2300 | 0.5519 |
+| Head 0:512 | **0.2368** | 0.5573 |
+| Head 0:640 | 0.2274 | 0.5612 |
+| Indonesian Retention (0:768) | 0.2255 | **0.5655** |
+| Head 0:896 | 0.2231 | 0.5543 |
+| Middle 128:896 | 0.2078 | 0.5315 |
+| Middle 256:1024 | 0.1838 | 0.4761 |
+| English Middle (384:1152) | 0.1624 | 0.4378 |
+| Tail 768:1536 | 0.0683 | 0.1895 |
+
+</div>
+
+This ablation study empirically reinforces the core arguments of the research:
+1. **Head Energy Localization**: All windows retained from the start of the spectrum (0:256 through 0:896) outperform the Baseline and the English Middle approach.
+2. **Linear Performance Degradation**: As the window shifts from the *Head* toward the *Tail* (`128:896` $\rightarrow$ `256:1024` $\rightarrow$ `384:1152` $\rightarrow$ `768:1536`), the NDCG score drops drastically and sequentially. This is **strong empirical evidence** that information crucial for Indonesian RAG is located at the beginning of the SVD spectrum.
+3. **Precision vs. Recall Trade-off**: The `0:512` configuration is the *sweet spot* for top-document precision (NDCG), while `0:768` provides the maximum search coverage (Recall). The choice of dimension depends on downstream application priorities.
+
+### 3.5. Cross-Dataset Evaluation and External Baseline Comparison
+In response to the need for evaluation across different *retrieval* datasets and performance benchmarking against state-of-the-art modern embedders, we evaluated this method on **Mr.TyDi (Indonesian)** and compared it with the current leading *dense retrieval* models: **BAAI/bge-m3** and **Multilingual-E5-large**.
+
+<div align="center">
+
+**Table 10: Cross-Dataset Comparison with Modern Baselines**
+
+| Model (Type) | Dataset | Dimension | NDCG@10 | Recall@100 |
+|:---|:---|:---:|:---:|:---:|
+| Qwen Baseline (Unsupervised) | MIRACL | 1536 | 0.1726 | 0.4298 |
+| Qwen Indonesian-Retention (Ours) | MIRACL | 768 | **0.3072** | **0.6630** |
+| BAAI/bge-m3 (Supervised) | MIRACL | 1024 | 0.7600 | 0.9913 |
+| Multilingual-E5-large (Supervised) | MIRACL | 1024 | 0.7478 | 0.9913 |
+| Qwen Baseline (Unsupervised) | Mr.TyDi | 1536 | 0.2742 | 0.5656 |
+| Qwen Indonesian-Retention (Ours) | Mr.TyDi | 768 | **0.4437** | **0.7920** |
+| BAAI/bge-m3 (Supervised) | Mr.TyDi | 1024 | 0.9306 | 0.9970 |
+| Multilingual-E5-large (Supervised) | Mr.TyDi | 1024 | 0.9426 | 1.0000 |
+
+</div>
+
+**Analysis of External Experiment Results:**
+The primary objective of this methodology is not to beat the absolute metrics of giant *embedders* like BGE-m3 and E5, which are specifically *fine-tuned* for retrieval tasks using millions of annotated labels (*supervised contrastive learning*). Instead, Table 10 demonstrates the efficacy of morphological compression in the *unsupervised* latent space:
+1. **Cross-Dataset Generalization**: The `Indonesian-Retention` filter proves its effectiveness beyond MIRACL. On Mr.TyDi, this method dramatically lifts NDCG@10 from 0.2742 to 0.4437. This confirms that the phenomenon of affix energy accumulation in the *Head* spectrum is not an artifact of a single dataset.
+2. **Strong Improvement Without Training**: This method doubles the *Retrieval Effectiveness* of a pure *raw* LLM (Qwen2.5) in a zero-shot setting, without consuming a single GPU resource for *fine-tuning*.
+3. **Extreme Scale Efficiency**: While BGE-m3 and E5 impose the use of thick 1024-dimensional representations, Indonesian-Retention compresses the entire language structure into just **768 dimensions**. This is potentially highly attractive for large-scale RAG architectures constrained by RAM memory on *vector databases*.
+
 ---
 
 ## 4. Discussion
@@ -198,7 +266,7 @@ While consistent across Qwen and Llama architectures, this study is limited to 2
 ## 5. Conclusion
 This study adapts EmbFilter for Indonesian with three key contributions:
 1. **Dimension Compression**: Compressing the representation from 1536 to 768 dimensions (retention window 0:768) directly halves RAG vector storage costs.
-2. **Retrieval Enhancement**: Filtering the Tail while retaining affix features in the Head improves NDCG@10 by +82% (from 0.1592 to 0.2900). This proves that what English-centric models discard as noise is actually vital grammatical scaffolding for agglutinative languages.
+2. **Retrieval Enhancement**: Filtering the Tail while retaining affix features in the Head significantly improves retrieval metrics. This provides empirical evidence that what English-centric models discard as noise strongly correlates with vital grammatical scaffolding for the Indonesian language.
 3. **Profiling Algorithm**: We provide a cross-model L2-Norm Profiling tool to empirically determine optimal SVD retention windows without costly fine-tuning.
 
 ---

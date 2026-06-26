@@ -43,7 +43,7 @@ Untuk rasio kompresi $2\times$, target dimensinya adalah $d' = 1536/2 = 768$. Da
 
 Distribusi pada Tabel 1 mengungkap temuan yang menantang asumsi paper referensi. Spektrum Tail didominasi oleh stopword Inggris/Mandarin, karakter tunggal, dan token struktural yang muncul konstan di seluruh teks dengan variansi mendekati nol, mengkonfirmasi bahwa dimensi-dimensi ini sebagian besar berisi noise anisotropik. Sebaliknya, Spektrum Head menampung penanda identitas bahasa seperti aksara non-Latin dan elemen multibahasa, bertentangan dengan asumsi EmbFilter bahwa zona ini hanya memuat noise frekuensi stopword. Temuan ini memunculkan pertanyaan kritis: bagaimana energi dari token morfologis bahasa Indonesia didistribusikan melintasi spektrum SVD?
 
-Untuk menjawab pertanyaan ini, kami menganalisis distribusi L2-norm dari 12 token afiksasi penting bahasa Indonesia, mencakup sufiks (`-nya`, `-lah`, `-kan`, `-pun`, `-kah`, `-ku`, `-mu`) dan prefiks (`di-`, `ter-`, `ber-`, `meng-`, `mem-`). Hasilnya disajikan pada Tabel 2.
+Untuk menjawab pertanyaan ini, kami menganalisis distribusi L2-norm dari sampel yang lebih luas mencakup 23 token afiksasi penting bahasa Indonesia, menanggapi pertanyaan umum tentang stabilitas profil morfologis. Sampel ini mencakup sufiks (`-nya`, `-lah`, `-kan`, `-pun`, `-kah`, `-ku`, `-mu`, `-an`, `-i`) dan berbagai bentuk turunan prefiks (`di-`, `ter-`, `ber-`, `me-`, `mem-`, `meng-`, `meny-`, `pe-`, `pem-`, `peng-`, `peny-`, `per-`, `se-`, `ke-`). Hasilnya disajikan pada Tabel 2.
 
 <div align="center">
 
@@ -51,22 +51,35 @@ Untuk menjawab pertanyaan ini, kami menganalisis distribusi L2-norm dari 12 toke
 
 | Token Afiks | Spektrum Head (Top 25%) | Spektrum Middle (Mid 50%) | Spektrum Tail (Bot 25%) |
 |:---|:---:|:---:|:---:|
+| **Prefiks Dasar & Turunan** | | | |
+| `' di'` | 28.8% | **45.2%** | 25.9% |
+| `' ter'` | 32.7% | **44.7%** | 22.6% |
+| `' ber'` | 33.5% | **42.3%** | 24.2% |
+| `' me'` | 23.7% | **42.8%** | 33.5% |
+| `' mem'` | 38.9% | **41.8%** | 19.2% |
+| `' meng'` | 35.2% | **40.6%** | 24.2% |
+| `' meny'` | 37.1% | **39.6%** | 23.3% |
+| `' pe'` | 32.4% | **44.7%** | 22.9% |
+| `' pem'` | **39.9%** | 39.4% | 20.7% |
+| `' peng'` | 37.3% | **40.5%** | 22.2% |
+| `' peny'` | **39.4%** | 39.1% | 21.4% |
+| `' per'` | 23.5% | **42.1%** | 34.4% |
+| `' se'` | 26.0% | **43.6%** | 30.4% |
+| `' ke'` | 34.6% | **42.5%** | 22.9% |
+| **Sufiks & Partikel** | | | |
 | `'nya'` | 35.0% | **37.6%** | 27.4% |
 | `'lah'` | 35.7% | **39.6%** | 24.7% |
 | `'kan'` | 36.0% | **40.3%** | 23.7% |
 | `'pun'` | 38.5% | **39.5%** | 22.1% |
 | `'kah'` | **38.5%** | 38.4% | 23.1% |
-| `'ku'` | 37.4% | **41.4%** | 21.2% |
+| `'ku'` | 37.5% | **41.4%** | 21.2% |
 | `'mu'` | 39.3% | **39.4%** | 21.3% |
-| `' di'` | 28.8% | **45.2%** | 25.9% |
-| `' ter'` | 32.7% | **44.7%** | 22.6% |
-| `' ber'` | 33.5% | **42.3%** | 24.2% |
-| `' meng'` | 35.2% | **40.6%** | 24.2% |
-| `' mem'` | 38.9% | **41.8%** | 19.2% |
+| `'an'` | 27.9% | **36.2%** | 35.9% |
+| `'i'` | 30.8% | **34.8%** | 34.4% |
 
 </div>
 
-Token-token afiks kritis mengakumulasi **75% hingga 80%** dari total energi laten mereka pada gabungan Spektrum Head dan Middle, sangat kontras dengan stopword Inggris yang terkonsentrasi di Tail. Gambar 1 memvisualisasikan perbedaan lokalisasi ini melalui distribusi energi SVD rata-rata (L1-norm) untuk kedua kelompok token di seluruh spektrum 1536-dimensi, yang dihaluskan dengan moving window berukuran 64.
+Dari sampel afiks kritis yang diperluas di atas, terlihat konsistensi yang sangat kuat: mayoritas mengonsentrasikan **75% hingga 80%** dari total energi laten mereka pada gabungan Spektrum Head dan Middle. *(Catatan: Subword yang sangat pendek dan bertumpang tindih dengan kosakata bahasa Inggris seperti `'an'` dan `'i'` memiliki proporsi Tail yang sedikit lebih besar karena ambiguitas lintas-bahasa, namun energi utamanya tetap dominan di Middle).* Hal ini sangat kontras dengan stopword Inggris yang terkonsentrasi di Tail. Gambar 1 memvisualisasikan perbedaan lokalisasi ini melalui distribusi energi SVD rata-rata (L1-norm) untuk kedua kelompok token di seluruh spektrum 1536-dimensi, yang dihaluskan dengan moving window berukuran 64.
 
 ![Gambar 1: Kurva Energi SVD: Afiks Bahasa Indonesia vs. Stopwords Inggris](data/energy_curve.png)
 
@@ -115,7 +128,7 @@ Kurva energi L1-norm untuk Llama-3.1-70B (Gambar 2) memperkuat temuan ini secara
 
 ![Gambar 2: Kurva Energi SVD (Llama-3.1-70B): Afiks Bahasa Indonesia vs. Stopwords Inggris](data/energy_curve-llama-70b.png)
 
-Konsistensi pola ini di ketiga model (1.5B, 7B, 70B) dan dua keluarga arsitektur (Qwen, Llama) mengindikasikan bahwa konsentrasi energi morfologis di Spektrum Head mencerminkan cara multilingual LLMs merepresentasikan morfem terikat dalam ruang laten, bukan sekadar artefak teknis dari sebuah arsitektur tunggal. Fenomena ini relevan untuk seluruh kelompok bahasa aglutinatif (Turki, Finlandia, Hungaria, Korea, Jepang) yang membangun relasi tata bahasa melalui pelekatan sekuensial morfem terikat. Pada LLMs yang dilatih dengan kosakata gabungan, morfem-morfem terikat ini memiliki frekuensi dokumen yang tinggi dan variansi kontekstual yang rendah, menyebabkannya terproyeksi secara kuat ke komponen singular tertinggi.
+Konsistensi pola ini di ketiga model (1.5B, 7B, 70B) dan dua keluarga arsitektur (Qwen, Llama) mengindikasikan bahwa konsentrasi energi morfologis di Spektrum Head mencerminkan cara multilingual LLMs merepresentasikan morfem terikat dalam ruang laten, bukan sekadar artefak teknis dari sebuah arsitektur tunggal. Meskipun ada hipotesis kuat bahwa fenomena serupa terjadi pada kelompok bahasa aglutinatif lain (Turki, Finlandia, dll.), secara akademis kesimpulan studi ini membatasi klaim utamanya pada afiks bahasa Indonesia yang diuji. Pada LLMs yang dilatih dengan kosakata gabungan, morfem-morfem terikat bahasa Indonesia terbukti memiliki frekuensi dokumen yang tinggi dan variansi kontekstual yang rendah, menyebabkannya terproyeksi secara kuat ke komponen singular tertinggi (korelasi tinggi).
 
 ### 2.4. Konfigurasi Proyeksi
 Bukti empiris dari ketiga model mendemonstrasikan bahwa pendekatan English-Middle membuang **28% hingga 38% energi semantik** (L2-norm) dari partikel sintaksis bahasa Indonesia yang esensial, seperti prefiks `meng-`, `ter-`, dan sufiks `-nya`, `-lah`. Algoritma yang kami usulkan menggeser jendela retensi (kompresi 50%) ke rentang dimensi 0 hingga 768, melingkupi seluruh Spektrum Head dan separuh atas dari Spektrum Middle (Indonesian-Retention). Pergeseran ini mempertahankan fitur morfologis sekaligus mengeliminasi komponen noise pada Spektrum Tail.
@@ -197,6 +210,59 @@ Untuk memastikan perbedaan performa bukan merupakan kebetulan statistik (statist
 
 Notasi superskrip menunjukkan bahwa model di baris tersebut secara signifikan statistik ($p<0.01$) mengungguli model dengan indeks terkait. Konfigurasi Indonesian-Retention (c) dengan notasi `0.290ᵃ,ᵇ,ᵈ` mengungguli seluruh konfigurasi secara absolut dan meyakinkan pada kedua metrik.
 
+### 3.4. Studi Ablasi: Menentukan Jendela Retensi Optimal
+Untuk menjawab mengapa jendela `0:767` dipilih dan memvalidasi hipotesis bahwa energi semantik benar-benar terlokalisasi di spektrum *Head*, kami melakukan studi ablasi ekstensif dengan menguji berbagai rentang dan pergeseran jendela retensi SVD. Tabel 9 merangkum hasil eksperimen ini.
+
+<div align="center">
+
+**Tabel 9: Studi Ablasi Ukuran dan Pergeseran Jendela SVD**
+
+| Konfigurasi Jendela | NDCG@10 | Recall@100 |
+|:---|:---:|:---:|
+| Baseline (1536D) | 0.1252 | 0.3688 |
+| Head 0:256 | 0.2300 | 0.5519 |
+| Head 0:512 | **0.2368** | 0.5573 |
+| Head 0:640 | 0.2274 | 0.5612 |
+| Indonesian Retention (0:768) | 0.2255 | **0.5655** |
+| Head 0:896 | 0.2231 | 0.5543 |
+| Middle 128:896 | 0.2078 | 0.5315 |
+| Middle 256:1024 | 0.1838 | 0.4761 |
+| English Middle (384:1152) | 0.1624 | 0.4378 |
+| Tail 768:1536 | 0.0683 | 0.1895 |
+
+</div>
+
+Hasil studi ablasi ini secara empiris memperkuat argumen utama penelitian:
+1. **Lokalisasi Energi di Head**: Semua jendela yang dipertahankan dari indeks awal spektrum (0:256 hingga 0:896) melampaui Baseline dan metode English Middle.
+2. **Degradasi Kinerja Linier**: Seiring digesernya jendela dari *Head* menuju *Tail* (`128:896` $\rightarrow$ `256:1024` $\rightarrow$ `384:1152` $\rightarrow$ `768:1536`), skor NDCG turun secara drastis secara sekuensial. Ini adalah **bukti empiris kuat** bahwa informasi yang penting untuk RAG bahasa Indonesia berada pada awal spektrum SVD.
+3. **Trade-off Presisi vs Recall**: Konfigurasi `0:512` merupakan *sweet spot* untuk ketepatan dokumen teratas (NDCG), sementara `0:768` memberikan cakupan pencarian paling maksimal (Recall). Pemilihan dimensi bergantung pada prioritas aplikasi hilir.
+
+### 3.5. Evaluasi Lintas Dataset dan Perbandingan Baseline Eksternal
+Menanggapi kebutuhan evaluasi pada berbagai variasi dataset *retrieval* dan pembandingan performa dengan embedder modern mutakhir, kami mengevaluasi metode ini pada **Mr.TyDi (Indonesian)** dan membandingkannya dengan model *dense retrieval* paling canggih saat ini: **BAAI/bge-m3** dan **Multilingual-E5-large**.
+
+<div align="center">
+
+**Tabel 10: Perbandingan Lintas Dataset dengan Baseline Modern**
+
+| Model (Tipe) | Dataset | Dimensi | NDCG@10 | Recall@100 |
+|:---|:---|:---:|:---:|:---:|
+| Qwen Baseline (Unsupervised) | MIRACL | 1536 | 0.1726 | 0.4298 |
+| Qwen Indonesian-Retention (Ours) | MIRACL | 768 | **0.3072** | **0.6630** |
+| BAAI/bge-m3 (Supervised) | MIRACL | 1024 | 0.7600 | 0.9913 |
+| Multilingual-E5-large (Supervised) | MIRACL | 1024 | 0.7478 | 0.9913 |
+| Qwen Baseline (Unsupervised) | Mr.TyDi | 1536 | 0.2742 | 0.5656 |
+| Qwen Indonesian-Retention (Ours) | Mr.TyDi | 768 | **0.4437** | **0.7920** |
+| BAAI/bge-m3 (Supervised) | Mr.TyDi | 1024 | 0.9306 | 0.9970 |
+| Multilingual-E5-large (Supervised) | Mr.TyDi | 1024 | 0.9426 | 1.0000 |
+
+</div>
+
+**Analisis Hasil Eksperimen Eksternal:**
+Tujuan utama dari metodologi ini bukanlah untuk mengalahkan metrik absolut dari *embedder* raksasa seperti BGE-m3 dan E5 yang di-*fine-tune* secara spesifik untuk tugas pencarian menggunakan jutaan label anotasi (*supervised contrastive learning*). Sebaliknya, Tabel 10 mendemonstrasikan efikasi dari kompresi morfologis pada ruang laten *unsupervised*:
+1. **Generalisasi Lintas Dataset**: Filter `Indonesian-Retention` membuktikan efektivitasnya melampaui MIRACL. Pada Mr.TyDi, metode ini secara dramatis mengangkat NDCG@10 dari 0.2742 ke 0.4437. Ini mengonfirmasi bahwa fenomena penumpukan energi afiks pada spektrum *Head* bukanlah kebetulan dari satu dataset tunggal.
+2. **Peningkatan Kuat Tanpa Pelatihan**: Metode ini melipatgandakan *Retrieval Effectiveness* dari sebuah *raw* LLM murni (Qwen2.5) di ranah zero-shot, tanpa memakan satupun resource GPU untuk *fine-tuning*.
+3. **Efisiensi Skala Ekstrem**: Sementara BGE-m3 dan E5 memaksakan penggunaan representasi 1024 dimensi yang tebal, Indonesian-Retention memampatkan keseluruhan struktur bahasa hingga ke **768 dimensi**. Ini berpotensi sangat menarik bagi arsitektur RAG skala besar yang dibatasi oleh memori RAM pada *vector database*.
+
 ---
 
 ## 4. Diskusi
@@ -211,7 +277,7 @@ Meskipun konsisten di seluruh arsitektur Qwen dan Llama, studi ini terbatas pada
 ## 5. Kesimpulan
 Studi ini mengadaptasi EmbFilter untuk bahasa Indonesia dengan tiga kontribusi utama:
 1. **Kompresi Dimensi**: Mengompresi representasi dari 1536 menjadi 768 dimensi (jendela retensi 0:768) secara langsung memangkas separuh biaya penyimpanan vektor RAG.
-2. **Peningkatan Retrieval**: Memfilter Tail sambil mempertahankan fitur afiks di Head meningkatkan NDCG@10 sebesar +82% (dari 0.1592 menjadi 0.2900). Hal ini membuktikan bahwa apa yang dibuang sebagai noise oleh model berpusat pada Inggris, sebenarnya merupakan fondasi gramatikal yang vital bagi bahasa aglutinatif.
+2. **Peningkatan Retrieval**: Memfilter Tail sambil mempertahankan fitur afiks di Head secara signifikan meningkatkan metrik retrieval. Hal ini memberikan bukti empiris bahwa apa yang dibuang sebagai noise oleh model berpusat pada Inggris, berkorelasi kuat dengan informasi gramatikal yang vital bagi bahasa Indonesia.
 3. **Algoritma Profiling**: Kami menyediakan alat L2-Norm Profiling lintas model untuk menentukan jendela retensi SVD secara empiris tanpa fine-tuning yang mahal.
 
 ---

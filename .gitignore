@@ -89,3 +89,8 @@ pandoc*
 *.docx
 .~lock.*
 bubub.md
+
+docx.md
+*opus.py*
+pyrightconfig.json
+Less_is_More_en_old.pdf

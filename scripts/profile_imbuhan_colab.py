@@ -21,10 +21,11 @@ def main():
     
     imbuhans = [
         "nya", "lah", "kan", "pun", "kah", "ku", "mu",
-        "nya", " kan", " lah",
+        "nya", " kan", " lah", " pun", " kah", " ku", " mu",
         " me", " di", " ter", " pe", " ber", " se", " ke",
-        " meng", " peng", " meny", " peny", " memper",
-        " mem", " pem", " bel"
+        " meng", " peng", " meny", " peny", " memper", " diper",
+        " mem", " pem", " bel", " per", " keber", " keter",
+        " an", " i", " annya", " inya", "an", "i"
     ]
     
     # Map imbuhans to token ids
